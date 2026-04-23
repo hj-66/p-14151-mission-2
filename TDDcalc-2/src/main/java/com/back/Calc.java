@@ -6,64 +6,71 @@ import java.util.List;
 
 public class Calc {
     public static int run(String content) {
-        String[] str = content.split(" ");
-        String [] new_str = FirstSearch(str);
-
-        return search(new_str, "+");
+        content = content.replace("-(", "-1 * ( ").replace("(", " ( ")
+                .replace(")", " ) ");
+        String[] str = content.trim().split("\\s+");
+        str = firstSearch(str);
+        return search(str, "+");
     }
 
-    private static String[] FirstSearch(String[] str) {
-        List<String> new_str = new ArrayList<>();
-        // 괄호 먼저 계산
+    private static String[] firstSearch(String[] str) {
+        List<String> result = new ArrayList<>();
+
+        int depth = 0;
         int start = -1;
-        int end;
-        boolean isFirst = false;
-        boolean isMinus = false;
 
         for (int i = 0; i < str.length; i++) {
-            if (str[i].contains("(")) { // 괄호 시작
-                if (str[i].contains("-")) isMinus = true;
-                start = i;
-                isFirst = true;
-            } else if (str[i].contains(")")) {
-                end = i;
-                new_str.add((isMinus ? "-" : "") + search(Arrays.copyOfRange(str, start, end + 1), "+"));
-                start = -1;
-                isFirst = false;
-                isMinus = false;
-            } else {
-                if (!isFirst) new_str.add(str[i]);
+
+            if (str[i].equals("(")) {
+                if (depth == 0) start = i;
+                depth++;
+            }
+            else if (str[i].equals(")")) {
+                depth--;
+
+                if (depth == 0) {
+                    // 괄호 하나 완성
+                    String[] inner = Arrays.copyOfRange(str, start + 1, i);
+
+                    // 재귀로 내부 괄호 먼저 처리
+                    inner = firstSearch(inner);
+
+                    // 계산
+                    int value = search(inner, "+");
+
+                    // 결과 추가
+                    result.add(String.valueOf(value));
+                }
+            }
+            else {
+                // 괄호 밖이면 그대로 추가
+                if (depth == 0 && !str[i].isBlank()) {
+                    result.add(str[i]);
+                }
             }
         }
 
-        return new_str.toArray(new String[0]);
+        return result.toArray(new String[0]);
     }
 
     private static int search(String[] str, String op) {
+        int sum = Integer.parseInt(str[0]) * (op.equals("-") ? -1 : 1);
         String b = "+"; // 연산자
-        int sum = Integer.parseInt(filter(str[0])) * (op.equals("-") ? -1 : 1);
 
         for (int i = 1; i < str.length; i++) {
-            String s = filter(str[i]);
-            if (s.matches("[+\\-*]")) {
-                b = s;
-            } else if (s.matches("-?\\d+")) {
+            if (str[i].matches("[+\\-*]")) {
+                b = str[i];
+            } else if (str[i].matches("-?\\d+")) {
                 if (b.equals("+") || b.equals("-")) {
                     sum = calculate(sum, "+", search(Arrays.copyOfRange(str, i, str.length), b));
                     break;
                 } else if (b.equals("*")) {
-                    sum = calculate(sum, b, Integer.parseInt(s));
+                    sum = calculate(sum, b, Integer.parseInt(str[i]));
                 }
             }
         }
 
         return sum;
-    }
-
-    private static String filter(String s) {
-        if (s.contains("(")) s = s.replace("-", "");
-        s = s.replaceAll("[()]", "");
-        return s;
     }
 
     private static int calculate(int a, String b, int c) {
